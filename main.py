@@ -35,8 +35,8 @@ WELCOME_MSG = """GOOD DAY ❤️\n\nWelcome to Primelogz support, how may we be 
 
 # === FAQ Responses ===
 faq_data = {
-    "how to reset password": "You can reset your password here: https://www.primelogz.com/auth/forget-passwords/",
-    "where is my order": "Track your order here: https://www.primelogz.com/orders/",
+    "how to reset password": "You can reset your password here: https://example.com/reset",
+    "where is my order": "Track your order here: https://example.com/orders",
     "how to fund": """**To fund your accounts simply go through the following procedures;**\n\n1. Login into your account if you don’t have one create before proceeding unto the next step.\n\n2. After logging click the icon with three dashes by your left and tap on add funds 👍\n\n3. You’ll be redirected to another page where you’d put in the amount you’d like to fund ✅\n\n4. Afterwards you’ll be taken to a different page where you can either select manual payment or online payment method\n\n6. Pick whichever you’d prefer and pay the exact amount shown on screen (For manual payment make sure to add the reference given to you)\n\n7. Now once all that is done your payment will be automatically added in a matter of seconds 💯\n\nIncase you still need some help or more assistance you can watch our tutorial on how to fund your acct below ⬇️\n\nhttps://t.me/Bigtunez1/39"""
 }
 
@@ -46,16 +46,16 @@ active_chats = {}
 pending_replies = {}
 
 # === Handlers ===
-
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot is alive and responding.")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     logger.info(f"/start used by {update.message.from_user.id}")
     await update.message.reply_text(WELCOME_MSG)
 
 def make_faq():
-    return "\n\n".join([f"• {q}" for q in faq_data.keys()])
+    return "".join([f"• {q} — type '{q}' or use /chat" for q in faq_data.keys()])
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -81,15 +81,39 @@ async def stopchat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=f"🔕 User @{update.message.from_user.username or user_id} has ended the support chat."
     )
 
-
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     user_id = update.message.from_user.id
-    user_msg = update.message.text
+    user_msg = update.message.text.lower()
 
     if active_chats.get(user_id):
-        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"📨 Message from @{update.message.from_user.username or user_id}:{user_msg}")
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"📨 Message from @{update.message.from_user.username or user_id}: {update.message.text}")
+        pending_replies[user_id] = datetime.utcnow()
+        return
+
+    if user_id not in seen_users:
+        seen_users.add(user_id)
+        await update.message.reply_text(WELCOME_MSG)
+
+    if all(keyword in user_msg for keyword in ["account", "category", "screen"]):
+        await context.bot.send_message(
+            chat_id=ADMIN_CHAT_ID,
+            text=f"🚨 Auto-escalated: @{update.message.from_user.username or user_id} provided details. Message: {update.message.text}"
+        )
+        active_chats[user_id] = datetime.utcnow()
+        pending_replies[user_id] = datetime.utcnow()
+        await update.message.reply_text("✅ You have been connected to an admin. Please wait while they respond.")
+        return
+
+    match = get_close_matches(user_msg, faq_data.keys(), n=1, cutoff=0.5)
+    if match:
+        await update.message.reply_text(faq_data[match[0]], parse_mode="Markdown")
+    else:
+        await update.message.reply_text("I'm not sure how to answer that. Let me connect you with a support agent.")
+        await context.bot.send_message(
+            chat_id=ADMIN_CHAT_ID,
+            text=f"🚨 User @{update.message.from_user.username or user_id} needs help: {update.message.text} Use /chat to begin chatting.")
+        active_chats[user_id] = datetime.utcnow()
         pending_replies[user_id] = datetime.utcnow()
         return
 
@@ -104,28 +128,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("I'm not sure how to answer that. Let me connect you with a support agent.")
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            text=f"🚨 User @{update.message.from_user.username or user_id} needs help: {user_msg} Use /chat to begin chatting.")
+            text=f"🚨 User @{update.message.from_user.username or user_id} needs help:\n{user_msg}\n\nUse /chat to begin chatting."
+        )
         active_chats[user_id] = datetime.utcnow()
-        pending_replies[user_id] = datetime.utcnow()
-        return
-
-    if user_id not in seen_users:
-        seen_users.add(user_id)
-        await update.message.reply_text(WELCOME_MSG)
-
-    
-        pending_replies[user_id] = datetime.utcnow()
-        return
-
-    if user_id not in seen_users:
-        seen_users.add(user_id)
-        await update.message.reply_text(WELCOME_MSG)
-
-    
-        pending_replies[user_id] = datetime.utcnow()
-        return
-
-    
         pending_replies[user_id] = datetime.utcnow()
 
 async def admin_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
