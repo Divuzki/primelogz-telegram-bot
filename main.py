@@ -35,8 +35,8 @@ WELCOME_MSG = """GOOD DAY ❤️\n\nWelcome to Primelogz support, how may we be 
 
 # === FAQ Responses ===
 faq_data = {
-    "how to reset password": "You can reset your password here: https://example.com/reset",
-    "where is my order": "Track your order here: https://example.com/orders",
+    "how to reset password": "You can reset your password here: https://www.primelogz.com/auth/forget-passwords/",
+    "where is my order": "Track your order here: https://www.primelogz.com/orders/",
     "how to fund": """**To fund your accounts simply go through the following procedures;**\n\n1. Login into your account if you don’t have one create before proceeding unto the next step.\n\n2. After logging click the icon with three dashes by your left and tap on add funds 👍\n\n3. You’ll be redirected to another page where you’d put in the amount you’d like to fund ✅\n\n4. Afterwards you’ll be taken to a different page where you can either select manual payment or online payment method\n\n6. Pick whichever you’d prefer and pay the exact amount shown on screen (For manual payment make sure to add the reference given to you)\n\n7. Now once all that is done your payment will be automatically added in a matter of seconds 💯\n\nIncase you still need some help or more assistance you can watch our tutorial on how to fund your acct below ⬇️\n\nhttps://t.me/Bigtunez1/39"""
 }
 
