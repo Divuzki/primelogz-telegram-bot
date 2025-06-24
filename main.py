@@ -31,39 +31,13 @@ app = FastAPI()
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # === Welcome Message ===
-WELCOME_MSG = """GOOD DAY ❤️
-
-Welcome to Primelogz support, how may we be of service to you..?
-
-For any complaints or issues please send the following:
-
-1. Account/Logs details  
-2. Category of account on site  
-3. Screenrecord/Screenshot of the problem  
-
-With these we will be able to respond to you accordingly. Thank you ✅"""
+WELCOME_MSG = """GOOD DAY ❤️\n\nWelcome to Primelogz support, how may we be of service to you..?\n\nFor any complaints or issues please send the following:\n\n1. Account/Logs details  \n2. Category of account on site  \n3. Screenrecord/Screenshot of the problem  \n\nWith these we will be able to respond to you accordingly. Thank you ✅"""
 
 # === FAQ Responses ===
 faq_data = {
-    "how to reset password": "You can reset your password here: https://example.com/reset",
-    "where is my order": "Track your order here: https://example.com/orders",
-    "how to fund": """**To fund your accounts simply go through the following procedures;**
-
-1. Login into your account if you don’t have one create before proceeding unto the next step.
-
-2. After logging click the icon with three dashes by your left and tap on add funds 👍
-
-3. You’ll be redirected to another page where you’d put in the amount you’d like to fund ✅
-
-4. Afterwards you’ll be taken to a different page where you can either select manual payment or online payment method
-
-6. Pick whichever you’d prefer and pay the exact amount shown on screen (For manual payment make sure to add the reference given to you)
-
-7. Now once all that is done your payment will be automatically added in a matter of seconds 💯
-
-Incase you still need some help or more assistance you can watch our tutorial on how to fund your acct below ⬇️
-
-https://t.me/Bigtunez1/39"""
+    "how to reset password": "You can reset your password here: https://www.primelogz.com/auth/forget-passwords/",
+    "where is my order": "Track your order here: https://www.primelogz.com/orders/",
+    "how to fund": """**To fund your accounts simply go through the following procedures;**\n\n1. Login into your account if you don’t have one create before proceeding unto the next step.\n\n2. After logging click the icon with three dashes by your left and tap on add funds 👍\n\n3. You’ll be redirected to another page where you’d put in the amount you’d like to fund ✅\n\n4. Afterwards you’ll be taken to a different page where you can either select manual payment or online payment method\n\n6. Pick whichever you’d prefer and pay the exact amount shown on screen (For manual payment make sure to add the reference given to you)\n\n7. Now once all that is done your payment will be automatically added in a matter of seconds 💯\n\nIncase you still need some help or more assistance you can watch our tutorial on how to fund your acct below ⬇️\n\nhttps://t.me/Bigtunez1/39"""
 }
 
 # === Memory Store ===
@@ -72,6 +46,9 @@ active_chats = {}
 pending_replies = {}
 
 # === Handlers ===
+
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Bot is alive and responding.")
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"/start used by {update.message.from_user.id}")
     await update.message.reply_text(WELCOME_MSG)
@@ -84,24 +61,25 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Sent FAQ list to {update.message.from_user.id}")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = int(context.args[0])
-        active_chats[user_id] = True
-        await update.message.reply_text(f"Chat started with user {user_id}. Use /stopchat {user_id} to end it.")
-    except:
-        await update.message.reply_text("Usage: /chat <user_id>")
+    user_id = update.message.from_user.id
+    active_chats[user_id] = datetime.utcnow()
+    await update.message.reply_text("✅ You are now connected to an admin. Please type your message.")
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,
+        text=f"👤 User @{update.message.from_user.username or user_id} has initiated a support chat."
+    )
 
 async def stopchat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = int(context.args[0])
-        active_chats.pop(user_id, None)
-        pending_replies.pop(user_id, None)
-        await update.message.reply_text(f"Chat ended with user {user_id}.")
-    except:
-        await update.message.reply_text("Usage: /stopchat <user_id>")
+    user_id = update.message.from_user.id
+    active_chats.pop(user_id, None)
+    pending_replies.pop(user_id, None)
+    await update.message.reply_text("👋 You have been disconnected from admin support. If you need further help later, feel free to use /chat to reconnect or check /faq for common solutions.")
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,
+        text=f"🔕 User @{update.message.from_user.username or user_id} has ended the support chat."
+    )
 
-async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bot is alive and responding.")
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -125,7 +103,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=ADMIN_CHAT_ID,
             text=f"🚨 User @{update.message.from_user.username or user_id} needs help:\n{user_msg}\n\nUse /chat {user_id} to begin chatting."
         )
-        active_chats[user_id] = True
+        active_chats[user_id] = datetime.utcnow()
         pending_replies[user_id] = datetime.utcnow()
 
 async def admin_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,7 +122,7 @@ telegram_app.add_handler(CommandHandler("ping", ping))
 telegram_app.add_handler(MessageHandler(filters.TEXT & filters.Chat(chat_id=ADMIN_CHAT_ID), admin_message_handler))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# === Background Task for Unread Reminders ===
+# === Background Task for Unread Reminders and Auto-Close ===
 async def notify_unread_messages():
     while True:
         now = datetime.utcnow()
@@ -152,9 +130,16 @@ async def notify_unread_messages():
             if (now - timestamp) > timedelta(minutes=2):
                 await telegram_app.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"⏰ Reminder: You have an unread message from user {user_id}.")
                 pending_replies.pop(user_id)
+
+        # Auto-close chats after 10 minutes of inactivity
+        for user_id, timestamp in list(active_chats.items()):
+            if isinstance(timestamp, datetime) and (now - timestamp) > timedelta(minutes=10):
+                active_chats.pop(user_id)
+                await telegram_app.bot.send_message(chat_id=user_id, text="⌛ Your support session has been automatically closed due to inactivity. Use /chat to reconnect anytime.")
+                await telegram_app.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"🔒 Auto-closed chat with user {user_id} due to inactivity.")
+
         await asyncio.sleep(60)
 
-# === FastAPI Startup + Webhook Setup ===
 @app.on_event("startup")
 async def startup():
     await telegram_app.initialize()
@@ -167,9 +152,8 @@ async def startup():
     ])
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
     asyncio.create_task(notify_unread_messages())
-    logging.info("🚀 Webhook registered and bot is ready.")
+    logging.info("Bot webhook registered and ready.")
 
-# === Webhook Route ===
 @app.post(WEBHOOK_PATH)
 async def telegram_webhook(req: Request):
     data = await req.json()
