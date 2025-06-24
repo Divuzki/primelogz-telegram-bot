@@ -135,8 +135,13 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("faq", faq))
 app.add_handler(CommandHandler("chat", chat))
 app.add_handler(CommandHandler("stopchat", stopchat))
+app.add_handler(CommandHandler("ping", ping))
 app.add_handler(MessageHandler(filters.TEXT & filters.Chat(chat_id=ADMIN_CHAT_ID), admin_message_handler))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Bot is alive and responding.")
+    logger.info(f"Ping received from {update.message.from_user.id}")
 
 async def main():
     await app.initialize()
