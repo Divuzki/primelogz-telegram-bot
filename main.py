@@ -68,6 +68,12 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ You are now connected to an admin. Please type your message.")
     await context.bot.send_message(
         chat_id=ADMIN_CHAT_ID,
+        text=f"""👤 User @{update.message.from_user.username or user_id} has initiated a support chat.
+Intent: manual_chat_request"""
+    )
+    await update.message.reply_text("✅ You are now connected to an admin. Please type your message.")
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,
         text=f"👤 User @{update.message.from_user.username or user_id} has initiated a support chat."
     )
 
@@ -87,7 +93,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_msg = update.message.text.lower()
 
     if active_chats.get(user_id):
-        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"📨 Message from @{update.message.from_user.username or user_id}: {update.message.text}")
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"""📨 Message from @{update.message.from_user.username or user_id}:
+{update.message.text}""")
         pending_replies[user_id] = datetime.utcnow()
         return
 
@@ -98,7 +105,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if all(keyword in user_msg for keyword in ["account", "category", "screen"]):
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            text=f"🚨 Auto-escalated: @{update.message.from_user.username or user_id} provided details. Message: {update.message.text}"
+            text=f"""🚨 Auto-escalated: @{update.message.from_user.username or user_id} provided details.
+Intent: user_issue_details
+Message: {update.message.text}"""
         )
         active_chats[user_id] = datetime.utcnow()
         pending_replies[user_id] = datetime.utcnow()
@@ -112,26 +121,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("I'm not sure how to answer that. Let me connect you with a support agent.")
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            text=f"🚨 User @{update.message.from_user.username or user_id} needs help: {update.message.text} Use /chat to begin chatting.")
-        active_chats[user_id] = datetime.utcnow()
-        pending_replies[user_id] = datetime.utcnow()
-        return
+            text=f"""🚨 User @{update.message.from_user.username or user_id} needs help:
+{update.message.text}
 
-    if user_id not in seen_users:
-        seen_users.add(user_id)
-        await update.message.reply_text(WELCOME_MSG)
-
-    match = get_close_matches(user_msg.lower(), faq_data.keys(), n=1, cutoff=0.5)
-    if match:
-        await update.message.reply_text(faq_data[match[0]], parse_mode="Markdown")
-    else:
-        await update.message.reply_text("I'm not sure how to answer that. Let me connect you with a support agent.")
-        await context.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
-            text=f"🚨 User @{update.message.from_user.username or user_id} needs help:\n{user_msg}\n\nUse /chat to begin chatting."
+Use /chat to begin chatting."""
         )
         active_chats[user_id] = datetime.utcnow()
         pending_replies[user_id] = datetime.utcnow()
+
+    
 
 async def admin_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
