@@ -1,5 +1,5 @@
 import logging
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     ContextTypes, filters
@@ -39,6 +39,12 @@ pending_replies = {}  # user_id: timestamp of last unanswered message
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"/start used by {update.message.from_user.id}")
     await update.message.reply_text(WELCOME_MSG)
+
+# === /faq Command Handler ===
+async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    faq_list = "\n\n".join([f"• {q}" for q in faq_data.keys()])
+    await update.message.reply_text(f"Here are the common FAQs you can ask about:\n\n{faq_list}")
+    logger.info(f"Sent FAQ list to {update.message.from_user.id}")
 
 # === /chat Command ===
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -126,6 +132,7 @@ async def notify_unread_messages(app):
 # === Run Bot with Async Main ===
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("faq", faq))
 app.add_handler(CommandHandler("chat", chat))
 app.add_handler(CommandHandler("stopchat", stopchat))
 app.add_handler(MessageHandler(filters.TEXT & filters.Chat(chat_id=ADMIN_CHAT_ID), admin_message_handler))
@@ -133,6 +140,12 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 async def main():
     await app.initialize()
+    await app.bot.set_my_commands([
+        BotCommand("start", "🚀 Start support session"),
+        BotCommand("faq", "📋 View frequently asked questions"),
+        BotCommand("chat", "👤 Start human support (admin only)"),
+        BotCommand("stopchat", "🔕 Stop human support (admin only)")
+    ])
     asyncio.create_task(notify_unread_messages(app))
     logger.info("Bot started and polling")
     await app.start()
